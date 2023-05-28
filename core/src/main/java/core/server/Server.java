@@ -1,6 +1,8 @@
 package core.server;
 
 
+import core.common.RpcDecoder;
+import core.common.RpcEncoder;
 import core.common.cache.CommonServerCache;
 import core.common.config.ServerConfig;
 import io.netty.bootstrap.ServerBootstrap;
@@ -49,9 +51,9 @@ public class Server {
             @Override
             protected void initChannel(SocketChannel ch) throws Exception {
                 System.out.println("初始化provider过程");
-//                ch.pipeline().addLast(new RpcEncoder());
-//                ch.pipeline().addLast(new RpcDecoder());
-//                ch.pipeline().addLast(new ServerHandler());
+                ch.pipeline().addLast(new RpcEncoder());
+                ch.pipeline().addLast(new RpcDecoder());
+                ch.pipeline().addLast(new ServerHandler());
             }
         });
     }
@@ -63,5 +65,6 @@ public class Server {
         server.setServerConfig(serverConfig);
         server.registryService(new DataServiceImpl());
         server.startApplication();
+        System.out.println("!=================!");
     }
 }

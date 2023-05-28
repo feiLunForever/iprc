@@ -1,5 +1,6 @@
 package core.common;
 
+import core.common.constants.RpcConstants;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.ByteToMessageDecoder;
@@ -14,7 +15,32 @@ public class RpcDecoder extends ByteToMessageDecoder {
     public final int BASE_LENGTH = 2 + 4;
 
     @Override
-    protected void decode(ChannelHandlerContext channelHandlerContext, ByteBuf byteBuf, List<Object> list) throws Exception {
+    protected void decode(ChannelHandlerContext ctx, ByteBuf byteBuf, List<Object> out) throws Exception {
+        if (byteBuf.readableBytes() >= BASE_LENGTH) {
+            if (byteBuf.readableBytes() > 1000) { // 防止体积过大的数据包
+                byteBuf.skipBytes(byteBuf.readableBytes());
+            }
+            int beginReader;
+            while (true) {
+                beginReader = byteBuf.readerIndex();
+                byteBuf.markReaderIndex();
+                if (byteBuf.readShort() == RpcConstants.MAGIC_NUMBER) {
+                    break;
+                } else { // 不是魔数开头，说明是非法的客户端发来的数据包
+                    ctx.close();
+                    return;
+                }
+            }
+            int length = byteBuf.readInt();
+            if (byteBuf.readableBytes() < length) { // 说明剩余的数据包不是完整的，这里需要重置下读索引
+                byteBuf.readerIndex(beginReader);
+                return;
+            }
+            byte[] data = new byte[length];
+            byteBuf.readBytes(data);
+            RpcProtocol rpcProtocol = new RpcProtocol(data);
 
+            out.add(rpcProtocol);
+        }
     }
 }
