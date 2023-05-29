@@ -14,8 +14,8 @@ public class ServerHandler extends ChannelInboundHandlerAdapter {
     @Override
     public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
         RpcProtocol rpcProtocol = (RpcProtocol) msg;
-        String json = new String(rpcProtocol.getContent(),0,rpcProtocol.getContentLength());
-        RpcInvocation rpcInvocation = JSON.parseObject(json,RpcInvocation.class);
+        String json = new String(rpcProtocol.getContent(), 0, rpcProtocol.getContentLength());
+        RpcInvocation rpcInvocation = JSON.parseObject(json, RpcInvocation.class);
         Object aimObject = CommonServerCache.PROVIDER_CLASS_MAP.get(rpcInvocation.getTargetServiceName());
         Method[] methods = aimObject.getClass().getDeclaredMethods();
         Object result = null;

@@ -12,18 +12,18 @@ import io.netty.channel.EventLoopGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
+import lombok.Getter;
+import lombok.Setter;
 
 public class Server {
 
+    @Getter
+    @Setter
     private ServerConfig serverConfig;
 
     private static EventLoopGroup bossGroup = null;
 
     private static EventLoopGroup workerGroup = null;
-
-    public void setServerConfig(ServerConfig serverConfig) {
-        this.serverConfig = serverConfig;
-    }
 
     public void registryService(Object serviceBean) {
         Class<?>[] classes = serviceBean.getClass().getInterfaces();
@@ -35,7 +35,7 @@ public class Server {
 
     }
 
-    public void startApplication() {
+    public void startApplication() throws InterruptedException {
         bossGroup = new NioEventLoopGroup();
         workerGroup = new NioEventLoopGroup();
         ServerBootstrap bootstrap = new ServerBootstrap();
@@ -56,9 +56,10 @@ public class Server {
                 ch.pipeline().addLast(new ServerHandler());
             }
         });
+        bootstrap.bind(serverConfig.getPort()).sync();
     }
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws InterruptedException {
         Server server = new Server();
         ServerConfig serverConfig = new ServerConfig();
         serverConfig.setPort(9090);

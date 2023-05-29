@@ -12,9 +12,9 @@
       </profile>
     </annotationProcessing>
     <bytecodeTargetLevel>
-      <module name="core" target="8" />
-      <module name="interfaces" target="8" />
-      <module name="irpc" target="8" />
+      <module name="core" target="1.8" />
+      <module name="interfaces" target="1.8" />
+      <module name="irpc" target="1.8" />
     </bytecodeTargetLevel>
   </component>
   <component name="JavacSettings">
