@@ -15,6 +15,8 @@ import core.proxy.jdk.JDKProxyFactory;
 import core.registry.AbstractRegister;
 import core.registry.URL;
 import core.registry.zookeeper.ZookeeperRegister;
+import core.router.RandomRouterImpl;
+import core.router.RotateRouterImpl;
 import interfaces.DataService;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.channel.ChannelFuture;
@@ -27,6 +29,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.List;
+
+import static core.common.constants.RpcConstants.RANDOM_ROUTER_TYPE;
+import static core.common.constants.RpcConstants.ROTATE_ROUTER_TYPE;
 
 
 /**
@@ -156,6 +161,7 @@ public class Client {
     public static void main(String[] args) throws Throwable {
         Client client = new Client();
         RpcReference rpcReference = client.initClientApplication();
+        client.initClientConfig();
         DataService dataService = rpcReference.get(DataService.class);
         client.doSubscribeService(DataService.class);
         ConnectionHandler.setBootstrap(client.getBootstrap());
@@ -169,6 +175,16 @@ public class Client {
             }catch (Exception e){
                 e.printStackTrace();
             }
+        }
+    }
+
+    private void initClientConfig() {
+        //初始化路由策略
+        String routerStrategy = clientConfig.getRouterStrategy();
+        if (RANDOM_ROUTER_TYPE.equals(routerStrategy)) {
+            CommonClientCache.IROUTER = new RandomRouterImpl();
+        } else if (ROTATE_ROUTER_TYPE.equals(routerStrategy)) {
+            CommonClientCache.IROUTER = new RotateRouterImpl();
         }
     }
 }

@@ -9,11 +9,17 @@ public class ProviderNodeInfo {
 
     private String address;
 
+    private Integer weight;
+
+    private String registryTime;
+
     @Override
     public String toString() {
         return "ProviderNodeInfo{" +
                 "serviceName='" + serviceName + '\'' +
                 ", address='" + address + '\'' +
+                ", weight=" + weight +
+                ", registryTime='" + registryTime + '\'' +
                 '}';
     }
 }

@@ -2,6 +2,8 @@ package core.common.client;
 
 import core.common.ChannelFutureWrapper;
 import core.common.cache.CommonClientCache;
+import core.router.IRouter;
+import core.router.Selector;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.channel.ChannelFuture;
 import lombok.Setter;
@@ -51,6 +53,10 @@ public class ConnectionHandler {
         }
         channelFutureWrappers.add(channelFutureWrapper);
         CommonClientCache.CONNECT_MAP.put(providerServiceName, channelFutureWrappers);
+
+        Selector selector = new Selector();
+        selector.setProviderServiceName(providerServiceName);
+        CommonClientCache.IROUTER.refreshRouterArr(selector);
     }
 
     /**
