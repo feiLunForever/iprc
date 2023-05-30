@@ -6,6 +6,9 @@ import core.common.RpcEncoder;
 import core.common.config.PropertiesBootstrap;
 import core.common.config.ServerConfig;
 import core.common.utils.CommonUtils;
+import core.filter.server.ServerFilterChain;
+import core.filter.server.ServerLogFilterImpl;
+import core.filter.server.ServerTokenFilterImpl;
 import core.registry.RegistryService;
 import core.registry.URL;
 import core.registry.zookeeper.ZookeeperRegister;
@@ -92,7 +95,11 @@ public class Server {
             default:
                 throw new RuntimeException("no match serialize type for" + serverSerialize);
         }
-        System.out.println("serverSerialize is "+serverSerialize);
+        SERVER_CONFIG = serverConfig;
+        ServerFilterChain serverFilterChain = new ServerFilterChain();
+        serverFilterChain.addServerFilter(new ServerLogFilterImpl());
+        serverFilterChain.addServerFilter(new ServerTokenFilterImpl());
+        SERVER_FILTER_CHAIN = serverFilterChain;
 
     }
 

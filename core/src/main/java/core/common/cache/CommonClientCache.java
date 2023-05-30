@@ -4,7 +4,10 @@ import com.google.common.collect.Lists;
 import core.common.ChannelFuturePollingRef;
 import core.common.ChannelFutureWrapper;
 import core.common.RpcInvocation;
+import core.common.config.ClientConfig;
+import core.filter.client.ClientFilterChain;
 import core.router.IRouter;
+import core.serialize.SerializeFactory;
 
 import java.util.HashSet;
 import java.util.List;
@@ -38,4 +41,8 @@ public class CommonClientCache {
     public static Map<String, ChannelFutureWrapper[]> SERVICE_ROUTER_MAP = new ConcurrentHashMap<>();
     public static ChannelFuturePollingRef CHANNEL_FUTURE_POLLING_REF = new ChannelFuturePollingRef();
     public static IRouter IROUTER;
+
+    public static SerializeFactory CLIENT_SERIALIZE_FACTORY;
+    public static ClientConfig CLIENT_CONFIG;
+    public static ClientFilterChain CLIENT_FILTER_CHAIN ;
 }

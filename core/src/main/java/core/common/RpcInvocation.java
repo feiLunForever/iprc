@@ -3,6 +3,8 @@ package core.common;
 import lombok.Data;
 
 import java.util.Arrays;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 @Data
 public class RpcInvocation {
@@ -16,6 +18,8 @@ public class RpcInvocation {
     private String uuid;
 
     private Object response;
+
+    private Map<String, Object> attachments = new ConcurrentHashMap<>();
 
     @Override
     public String toString() {

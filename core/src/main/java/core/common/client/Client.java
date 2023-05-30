@@ -5,11 +5,14 @@ import core.common.RpcDecoder;
 import core.common.RpcEncoder;
 import core.common.RpcInvocation;
 import core.common.RpcProtocol;
-import core.common.cache.CommonClientCache;
 import core.common.config.ClientConfig;
 import core.common.config.PropertiesBootstrap;
 import core.common.event.IRpcListenerLoader;
 import core.common.utils.CommonUtils;
+import core.filter.client.ClientFilterChain;
+import core.filter.client.ClientLogFilterImpl;
+import core.filter.client.DirectInvokeFilterImpl;
+import core.filter.client.GroupFilterImpl;
 import core.proxy.javassist.JavassistProxyFactory;
 import core.proxy.jdk.JDKProxyFactory;
 import core.registry.AbstractRegister;
@@ -17,6 +20,10 @@ import core.registry.URL;
 import core.registry.zookeeper.ZookeeperRegister;
 import core.router.RandomRouterImpl;
 import core.router.RotateRouterImpl;
+import core.serialize.fastjson.FastJsonSerializeFactory;
+import core.serialize.hessian.HessianSerializeFactory;
+import core.serialize.jdk.JdkSerializeFactory;
+import core.serialize.kryo.KryoSerializeFactory;
 import interfaces.DataService;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.channel.ChannelFuture;
@@ -30,8 +37,8 @@ import org.slf4j.LoggerFactory;
 
 import java.util.List;
 
-import static core.common.constants.RpcConstants.RANDOM_ROUTER_TYPE;
-import static core.common.constants.RpcConstants.ROTATE_ROUTER_TYPE;
+import static core.common.cache.CommonClientCache.*;
+import static core.common.constants.RpcConstants.*;
 
 
 /**
@@ -109,7 +116,7 @@ public class Client {
      * 开始和各个provider建立连接
      */
     public void doConnectServer() {
-        for (String providerServiceName : CommonClientCache.SUBSCRIBE_SERVICE_LIST) {
+        for (String providerServiceName : SUBSCRIBE_SERVICE_LIST) {
             List<String> providerIps = abstractRegister.getProviderIps(providerServiceName);
             for (String providerIp : providerIps) {
                 try {
@@ -145,11 +152,12 @@ public class Client {
             while (true) {
                 try {
                     //阻塞模式
-                    RpcInvocation data = CommonClientCache.SEND_QUEUE.take();
-                    String json = JSON.toJSONString(data);
-                    RpcProtocol rpcProtocol = new RpcProtocol(json.getBytes());
-                    ChannelFuture channelFuture = ConnectionHandler.getChannelFuture(data.getTargetServiceName());
-                    channelFuture.channel().writeAndFlush(rpcProtocol);
+                    RpcInvocation rpcInvocation = SEND_QUEUE.take();
+                    ChannelFuture channelFuture = ConnectionHandler.getChannelFuture(rpcInvocation);
+                    if (channelFuture != null) {
+                        RpcProtocol rpcProtocol = new RpcProtocol(CLIENT_SERIALIZE_FACTORY.serialize(rpcInvocation));
+                        channelFuture.channel().writeAndFlush(rpcProtocol);
+                    }
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
@@ -182,9 +190,33 @@ public class Client {
         //初始化路由策略
         String routerStrategy = clientConfig.getRouterStrategy();
         if (RANDOM_ROUTER_TYPE.equals(routerStrategy)) {
-            CommonClientCache.IROUTER = new RandomRouterImpl();
+            IROUTER = new RandomRouterImpl();
         } else if (ROTATE_ROUTER_TYPE.equals(routerStrategy)) {
-            CommonClientCache.IROUTER = new RotateRouterImpl();
+            IROUTER = new RotateRouterImpl();
         }
+        String clientSerialize = clientConfig.getClientSerialize();
+        switch (clientSerialize) {
+            case JDK_SERIALIZE_TYPE:
+                CLIENT_SERIALIZE_FACTORY = new JdkSerializeFactory();
+                break;
+            case FAST_JSON_SERIALIZE_TYPE:
+                CLIENT_SERIALIZE_FACTORY = new FastJsonSerializeFactory();
+                break;
+            case HESSIAN2_SERIALIZE_TYPE:
+                CLIENT_SERIALIZE_FACTORY = new HessianSerializeFactory();
+                break;
+            case KRYO_SERIALIZE_TYPE:
+                CLIENT_SERIALIZE_FACTORY = new KryoSerializeFactory();
+                break;
+            default:
+                throw new RuntimeException("no match serialize type for " + clientSerialize);
+        }
+
+        //todo 初始化过滤链 指定过滤的顺序
+        ClientFilterChain clientFilterChain = new ClientFilterChain();
+        clientFilterChain.addClientFilter(new DirectInvokeFilterImpl());
+        clientFilterChain.addClientFilter(new GroupFilterImpl());
+        clientFilterChain.addClientFilter(new ClientLogFilterImpl());
+        CLIENT_FILTER_CHAIN = clientFilterChain;
     }
 }
