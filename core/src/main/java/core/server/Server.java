@@ -2,13 +2,17 @@ package core.server;
 
 import core.common.RpcDecoder;
 import core.common.RpcEncoder;
-import core.common.cache.CommonServerCache;
+
 import core.common.config.PropertiesBootstrap;
 import core.common.config.ServerConfig;
 import core.common.utils.CommonUtils;
 import core.registry.RegistryService;
 import core.registry.URL;
 import core.registry.zookeeper.ZookeeperRegister;
+import core.serialize.fastjson.FastJsonSerializeFactory;
+import core.serialize.hessian.HessianSerializeFactory;
+import core.serialize.jdk.JdkSerializeFactory;
+import core.serialize.kryo.KryoSerializeFactory;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.ChannelOption;
@@ -16,6 +20,11 @@ import io.netty.channel.EventLoopGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
+
+import static core.common.constants.RpcConstants.*;
+
+import static core.common.cache.CommonServerCache.*;
+
 /**
  * @Author linhao
  * @Date created in 8:12 上午 2021/11/29
@@ -66,6 +75,25 @@ public class Server {
     public void initServerConfig() {
         ServerConfig serverConfig = PropertiesBootstrap.loadServerConfigFromLocal();
         this.setServerConfig(serverConfig);
+        String serverSerialize = serverConfig.getServerSerialize();
+        switch (serverSerialize) {
+            case JDK_SERIALIZE_TYPE:
+                SERVER_SERIALIZE_FACTORY = new JdkSerializeFactory();
+                break;
+            case FAST_JSON_SERIALIZE_TYPE:
+                SERVER_SERIALIZE_FACTORY = new FastJsonSerializeFactory();
+                break;
+            case HESSIAN2_SERIALIZE_TYPE:
+                SERVER_SERIALIZE_FACTORY = new HessianSerializeFactory();
+                break;
+            case KRYO_SERIALIZE_TYPE:
+                SERVER_SERIALIZE_FACTORY = new KryoSerializeFactory();
+                break;
+            default:
+                throw new RuntimeException("no match serialize type for" + serverSerialize);
+        }
+        System.out.println("serverSerialize is "+serverSerialize);
+
     }
 
     /**
@@ -86,13 +114,13 @@ public class Server {
         }
         //默认选择该对象的第一个实现接口
         Class interfaceClass = classes[0];
-        CommonServerCache.PROVIDER_CLASS_MAP.put(interfaceClass.getName(), serviceBean);
+        PROVIDER_CLASS_MAP.put(interfaceClass.getName(), serviceBean);
         URL url = new URL();
         url.setServiceName(interfaceClass.getName());
         url.setApplicationName(serverConfig.getApplicationName());
         url.addParameter("host", CommonUtils.getIpAddress());
         url.addParameter("port", String.valueOf(serverConfig.getServerPort()));
-        CommonServerCache.PROVIDER_URL_SET.add(url);
+        PROVIDER_URL_SET.add(url);
     }
 
     public void batchExportUrl(){
@@ -104,7 +132,7 @@ public class Server {
                 } catch (InterruptedException e) {
                     e.printStackTrace();
                 }
-                for (URL url : CommonServerCache.PROVIDER_URL_SET) {
+                for (URL url : PROVIDER_URL_SET) {
                     registryService.register(url);
                 }
             }
