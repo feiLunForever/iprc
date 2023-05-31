@@ -13,6 +13,8 @@ public class ClientConfig {
 
     private String registerAddr;
 
+    private String registerType;
+
     /**
      * 代理类型 example: jdk,javassist
      */

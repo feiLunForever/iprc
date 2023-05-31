@@ -6,12 +6,14 @@ import core.common.RpcEncoder;
 import core.common.config.PropertiesBootstrap;
 import core.common.config.ServerConfig;
 import core.common.utils.CommonUtils;
+import core.filter.IServerFilter;
 import core.filter.server.ServerFilterChain;
 import core.filter.server.ServerLogFilterImpl;
 import core.filter.server.ServerTokenFilterImpl;
 import core.registry.RegistryService;
 import core.registry.URL;
 import core.registry.zookeeper.ZookeeperRegister;
+import core.serialize.SerializeFactory;
 import core.serialize.fastjson.FastJsonSerializeFactory;
 import core.serialize.hessian.HessianSerializeFactory;
 import core.serialize.jdk.JdkSerializeFactory;
@@ -24,9 +26,14 @@ import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
 
+import java.io.IOException;
+import java.util.LinkedHashMap;
+
+import static core.common.cache.CommonClientCache.EXTENSION_LOADER;
 import static core.common.constants.RpcConstants.*;
 
 import static core.common.cache.CommonServerCache.*;
+import static core.spi.ExtensionLoader.EXTENSION_LOADER_CLASS_CACHE;
 
 /**
  * @Author linhao
@@ -75,30 +82,31 @@ public class Server {
         bootstrap.bind(serverConfig.getServerPort()).sync();
     }
 
-    public void initServerConfig() {
+    public void initServerConfig() throws IOException, ClassNotFoundException, IllegalAccessException, InstantiationException {
         ServerConfig serverConfig = PropertiesBootstrap.loadServerConfigFromLocal();
         this.setServerConfig(serverConfig);
-        String serverSerialize = serverConfig.getServerSerialize();
-        switch (serverSerialize) {
-            case JDK_SERIALIZE_TYPE:
-                SERVER_SERIALIZE_FACTORY = new JdkSerializeFactory();
-                break;
-            case FAST_JSON_SERIALIZE_TYPE:
-                SERVER_SERIALIZE_FACTORY = new FastJsonSerializeFactory();
-                break;
-            case HESSIAN2_SERIALIZE_TYPE:
-                SERVER_SERIALIZE_FACTORY = new HessianSerializeFactory();
-                break;
-            case KRYO_SERIALIZE_TYPE:
-                SERVER_SERIALIZE_FACTORY = new KryoSerializeFactory();
-                break;
-            default:
-                throw new RuntimeException("no match serialize type for" + serverSerialize);
-        }
         SERVER_CONFIG = serverConfig;
+        //序列化技术初始化
+        String serverSerialize = serverConfig.getServerSerialize();
+        EXTENSION_LOADER.loadExtension(SerializeFactory.class);
+        LinkedHashMap<String, Class> serializeFactoryClassMap = EXTENSION_LOADER_CLASS_CACHE.get(SerializeFactory.class.getName());
+        Class serializeFactoryClass = serializeFactoryClassMap.get(serverSerialize);
+        if (serializeFactoryClass == null) {
+            throw new RuntimeException("no match serialize type for " + serverSerialize);
+        }
+
+        SERVER_SERIALIZE_FACTORY = (SerializeFactory) serializeFactoryClass.newInstance();
+        //过滤链技术初始化
+        EXTENSION_LOADER.loadExtension(IServerFilter.class);
+        LinkedHashMap<String, Class> iServerFilterClassMap = EXTENSION_LOADER_CLASS_CACHE.get(IServerFilter.class.getName());
         ServerFilterChain serverFilterChain = new ServerFilterChain();
-        serverFilterChain.addServerFilter(new ServerLogFilterImpl());
-        serverFilterChain.addServerFilter(new ServerTokenFilterImpl());
+        for (String iServerFilterKey : iServerFilterClassMap.keySet()) {
+            Class iServerFilterClass = iServerFilterClassMap.get(iServerFilterKey);
+            if(iServerFilterClass==null){
+                throw new RuntimeException("no match iServerFilter type for " + iServerFilterKey);
+            }
+            serverFilterChain.addServerFilter((IServerFilter) iServerFilterClass.newInstance());
+        }
         SERVER_FILTER_CHAIN = serverFilterChain;
 
     }
@@ -148,7 +156,7 @@ public class Server {
     }
 
 
-    public static void main(String[] args) throws InterruptedException {
+    public static void main(String[] args) throws InterruptedException, ClassNotFoundException, InstantiationException, IllegalAccessException, IOException {
         Server server = new Server();
         server.initServerConfig();
         server.exportService(new DataServiceImpl());

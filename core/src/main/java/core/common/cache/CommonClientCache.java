@@ -6,8 +6,10 @@ import core.common.ChannelFutureWrapper;
 import core.common.RpcInvocation;
 import core.common.config.ClientConfig;
 import core.filter.client.ClientFilterChain;
+import core.registry.AbstractRegister;
 import core.router.IRouter;
 import core.serialize.SerializeFactory;
+import core.spi.ExtensionLoader;
 
 import java.util.HashSet;
 import java.util.List;
@@ -30,6 +32,8 @@ public class CommonClientCache {
      */
     public static List<String> SUBSCRIBE_SERVICE_LIST = Lists.newArrayList();
 
+    public static Map<String, Map<String,String>> URL_MAP = new ConcurrentHashMap<>();
+
     public static Set<String> SERVER_ADDRESS = new HashSet<>();
 
     /**
@@ -45,4 +49,7 @@ public class CommonClientCache {
     public static SerializeFactory CLIENT_SERIALIZE_FACTORY;
     public static ClientConfig CLIENT_CONFIG;
     public static ClientFilterChain CLIENT_FILTER_CHAIN ;
+
+    public static AbstractRegister ABSTRACT_REGISTER;
+    public static ExtensionLoader EXTENSION_LOADER = new ExtensionLoader();
 }
